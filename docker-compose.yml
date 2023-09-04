@@ -1,0 +1,155 @@
+version: "3"
+
+# TODO: add containers for these:
+# MakeMKV
+# Handbrake
+
+services:
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 8888:8888/tcp # HTTP proxy
+      - 8388:8388/tcp # Shadowsocks
+      - 8388:8388/udp # Shadowsocks
+      - 9696:9696/tcp # prowlarr
+      - 7878:7878/tcp # radarr
+      - 8989:8989/tcp # sonarr
+      - 5055:5055/tcp # overseerr
+      # - 8191:8191/tcp # flaresolverr
+      - 8090:8090 # qbittorrent
+    volumes:
+      - ${CONFIG_DIR}/gluetun:/gluetun
+    environment:
+      - PUID
+      - PGID
+      - TZ
+      - VPN_SERVICE_PROVIDER=${VPN_PROVIDER}
+      - VPN_TYPE
+      - FREE_ONLY
+      - SERVER_COUNTRIES=${VPN_COUNTRIES}
+      - SERVER_REGIONS=${VPN_REGIONS}
+
+      # auth env vars
+      - WIREGUARD_PRIVATE_KEY
+      - OPENVPN_USER
+      - OPENVPN_PASSWORD
+
+      - WIREGUARD_MTU=1320
+      - HTTPPROXY=off #change to on if you wish to enable
+      - SHADOWSOCKS=off #change to on if you wish to enable
+      - FIREWALL_OUTBOUND_SUBNETS=172.20.0.0/16,192.168.1.0/24 #change this in line with your subnet see note on guide.
+      - FIREWALL_VPN_INPUT_PORTS=62659 #uncomment this line and change the port as per the note on the guide
+    network_mode: synobridge
+    restart: unless-stopped
+
+  plex:
+    image: linuxserver/plex
+    container_name: plex
+    environment:
+      - PUID
+      - PGID
+      - PLEX_CLAIM
+      - VERSION=latest
+      - DOCKER_MODS=linuxserver/mods:plex-absolute-hama
+    volumes:
+      - ${CONFIG_DIR}/plex:/config
+      - ${MEDIA_DIR}:/media
+    network_mode: host
+    restart: unless-stopped
+
+  qbittorrent:
+    image: linuxserver/qbittorrent
+    container_name: qbittorrent
+    environment:
+      - PUID
+      - PGID
+      - TZ
+      - WEBUI_PORT=8090
+    volumes:
+      - ${CONFIG_DIR}/qbittorrent:/config
+      - ${MEDIA_DIR}/downloads:/data/torrents
+    network_mode: service:gluetun # run on the vpn network
+    depends_on:
+      - gluetun
+    restart: unless-stopped
+
+  homeassistant:
+    image: linuxserver/homeassistant
+    container_name: homeassistant
+    environment:
+      - PUID
+      - PGID
+      - TZ
+      - DOCKER_MODS=linuxserver/mods:homeassistant-hacs
+    volumes:
+      - ${CONFIG_DIR}/homeassistant:/config
+      - /var/run/docker.sock:/var/run/docker.sock
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    network_mode: host
+    restart: unless-stopped
+
+  prowlarr:
+    image: linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID
+      - PGID
+      - TZ
+    volumes:
+      - ${CONFIG_DIR}/prowlarr:/config
+    network_mode: service:gluetun # run on the vpn network
+    depends_on:
+      - gluetun
+    restart: unless-stopped
+
+  radarr:
+      image: linuxserver/radarr:latest
+      container_name: radarr
+      environment:
+        - PUID
+        - PGID
+        - TZ
+      volumes:
+        - ${CONFIG_DIR}/radarr:/config
+        - ${MEDIA_DIR}/downloads/torrents:/data/torrents
+        - ${MEDIA_DIR}/downloads/usenet:/data/usenet
+        - ${MEDIA_DIR}/movies:/data/movies
+      network_mode: service:gluetun # run on the vpn network
+      depends_on:
+        - gluetun
+      restart: unless-stopped
+
+  sonarr:
+      image: linuxserver/sonarr:latest
+      container_name: sonarr
+      environment:
+        - PUID
+        - PGID
+        - TZ
+      volumes:
+        - ${CONFIG_DIR}/sonarr:/config
+        - ${MEDIA_DIR}/downloads/torrents:/data/torrents
+        - ${MEDIA_DIR}/downloads/usenet:/data/usenet
+        - ${MEDIA_DIR}/tv:/data/tv
+      network_mode: service:gluetun # run on the vpn network
+      depends_on:
+        - gluetun
+      restart: unless-stopped
+
+  overseerr:
+    image: linuxserver/overseerr:latest
+    container_name: overseerr
+    environment:
+      - PUID
+      - PGID
+      - TZ
+    volumes:
+      - ${CONFIG_DIR}/overseerr:/config
+    network_mode: service:gluetun # run on the vpn network
+    depends_on:
+      - gluetun
+    restart: unless-stopped
