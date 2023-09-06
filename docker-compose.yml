@@ -1,5 +1,16 @@
 version: "3"
 
+name: 'home-server'
+
+# create a new bridge network for the containers to use
+networks:
+  synobridge:
+    name: synobridge
+    driver: bridge
+    driver_opts:
+      subnet: 172.20.0.0/16
+      gateway: 172.20.0.1
+
 # TODO: add containers for these:
 # MakeMKV
 # Handbrake
@@ -8,6 +19,8 @@ services:
   gluetun:
     image: qmcgaw/gluetun
     container_name: gluetun
+    cap_add:
+      - NET_ADMIN
     devices:
       - /dev/net/tun:/dev/net/tun
     ports:
@@ -42,7 +55,8 @@ services:
       - SHADOWSOCKS=off #change to on if you wish to enable
       - FIREWALL_OUTBOUND_SUBNETS=172.20.0.0/16,192.168.1.0/24 #change this in line with your subnet see note on guide.
       - FIREWALL_VPN_INPUT_PORTS=62659 #uncomment this line and change the port as per the note on the guide
-    network_mode: synobridge
+    networks:
+      - synobridge
     restart: unless-stopped
 
   plex:
@@ -87,8 +101,8 @@ services:
     volumes:
       - ${CONFIG_DIR}/homeassistant:/config
       - /var/run/docker.sock:/var/run/docker.sock
-    devices:
-      - /dev/ttyACM0:/dev/ttyACM0
+    # devices:
+      # - /dev/ttyACM0:/dev/ttyACM0 # Z-Wave USB stick, disable if not using
     network_mode: host
     restart: unless-stopped
 
@@ -115,8 +129,7 @@ services:
         - TZ
       volumes:
         - ${CONFIG_DIR}/radarr:/config
-        - ${MEDIA_DIR}/downloads/torrents:/data/torrents
-        - ${MEDIA_DIR}/downloads/usenet:/data/usenet
+        - ${MEDIA_DIR}/downloads:/data/torrents
         - ${MEDIA_DIR}/movies:/data/movies
       network_mode: service:gluetun # run on the vpn network
       depends_on:
@@ -132,8 +145,7 @@ services:
         - TZ
       volumes:
         - ${CONFIG_DIR}/sonarr:/config
-        - ${MEDIA_DIR}/downloads/torrents:/data/torrents
-        - ${MEDIA_DIR}/downloads/usenet:/data/usenet
+        - ${MEDIA_DIR}/downloads:/data/torrents
         - ${MEDIA_DIR}/tv:/data/tv
       network_mode: service:gluetun # run on the vpn network
       depends_on:
