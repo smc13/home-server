@@ -31,7 +31,7 @@ services:
       - 7878:7878/tcp # radarr
       - 8989:8989/tcp # sonarr
       - 5055:5055/tcp # overseerr
-      # - 8191:8191/tcp # flaresolverr
+      - 8191:8191/tcp # flaresolverr
       - 8090:8090 # qbittorrent
     volumes:
       - ${CONFIG_DIR}/gluetun:/gluetun
@@ -57,6 +57,20 @@ services:
       - FIREWALL_VPN_INPUT_PORTS=62659 #uncomment this line and change the port as per the note on the guide
     networks:
       - synobridge
+    restart: unless-stopped
+
+  flaresolverr:
+    image: flaresolverr/flaresolverr
+    container_name: flaresolverr
+    environment:
+      - PUID
+      - PGID
+      - TZ
+    volumes:
+      - ${CONFIG_DIR}/flaresolverr:/config
+    network_mode: service:gluetun # run on the vpn network
+    depends_on:
+      - gluetun
     restart: unless-stopped
 
   plex:
