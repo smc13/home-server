@@ -189,3 +189,18 @@ services:
     depends_on:
       - gluetun
     restart: unless-stopped
+
+  # A highly customizable homepage (or startpage / application dashboard)
+  # with Docker and service API integrations. (optional)
+  # homepage:
+  #   image: ghcr.io/benphelps/homepage:latest
+  #   container_name: homepage
+  #   ports:
+  #     - 3000:3000
+  #   volumes:
+  #     - ${CONFIG_DIR}/homepage:/app/config
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+  #   # user: ${PUID}:${PGID}
+  #   networks:
+  #     - synobridge
+  #   restart: unless-stopped
