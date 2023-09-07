@@ -11,11 +11,10 @@ networks:
       subnet: 172.20.0.0/16
       gateway: 172.20.0.1
 
-# TODO: add containers for these:
-# MakeMKV
-# Handbrake
-
 services:
+
+  # VPN client in a thin Docker container for multiple VPN providers,
+  # written in Go, and using OpenVPN or Wireguard, DNS over TLS, with a few proxy servers built-in.
   gluetun:
     image: qmcgaw/gluetun
     container_name: gluetun
@@ -59,6 +58,7 @@ services:
       - synobridge
     restart: unless-stopped
 
+  # Proxy server to bypass Cloudflare protection
   flaresolverr:
     image: flaresolverr/flaresolverr
     container_name: flaresolverr
@@ -73,6 +73,7 @@ services:
       - gluetun
     restart: unless-stopped
 
+  # Plex organizes all of your personal media so you can enjoy it no matter where you are.
   plex:
     image: linuxserver/plex
     container_name: plex
@@ -88,6 +89,8 @@ services:
     network_mode: host
     restart: unless-stopped
 
+  # qBittorrent is a bittorrent client programmed in C++ / Qt that uses
+  # libtorrent (sometimes called libtorrent-rasterbar) by Arvid Norberg.
   qbittorrent:
     image: linuxserver/qbittorrent
     container_name: qbittorrent
@@ -104,6 +107,7 @@ services:
       - gluetun
     restart: unless-stopped
 
+  # 🏡 Open source home automation that puts local control and privacy first.
   homeassistant:
     image: linuxserver/homeassistant
     container_name: homeassistant
@@ -114,12 +118,14 @@ services:
       - DOCKER_MODS=linuxserver/mods:homeassistant-hacs
     volumes:
       - ${CONFIG_DIR}/homeassistant:/config
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock # allows homeassistant to see other containers
     # devices:
       # - /dev/ttyACM0:/dev/ttyACM0 # Z-Wave USB stick, disable if not using
     network_mode: host
     restart: unless-stopped
 
+  # Prowlarr is an indexer manager/proxy built on the popular *arr
+  # .net/reactjs base stack to integrate with your various PVR apps.
   prowlarr:
     image: linuxserver/prowlarr:latest
     container_name: prowlarr
@@ -134,6 +140,7 @@ services:
       - gluetun
     restart: unless-stopped
 
+  # A fork of Sonarr to work with movies à la Couchpotato.
   radarr:
       image: linuxserver/radarr:latest
       container_name: radarr
@@ -150,6 +157,7 @@ services:
         - gluetun
       restart: unless-stopped
 
+  # Smart PVR for newsgroup and bittorrent users.
   sonarr:
       image: linuxserver/sonarr:latest
       container_name: sonarr
@@ -166,6 +174,8 @@ services:
         - gluetun
       restart: unless-stopped
 
+  # Overseerr is a request management and media discovery tool
+  # built to work with your existing Plex ecosystem.
   overseerr:
     image: linuxserver/overseerr:latest
     container_name: overseerr
