@@ -1,7 +1,5 @@
 version: "3"
 
-name: 'home-server'
-
 # create a new bridge network for the containers to use
 networks:
   synobridge:
@@ -23,6 +21,7 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     ports:
+      - 8345:8000/tcp # HTTP control server
       - 8888:8888/tcp # HTTP proxy
       - 8388:8388/tcp # Shadowsocks
       - 8388:8388/udp # Shadowsocks
@@ -101,7 +100,7 @@ services:
       - WEBUI_PORT=8090
     volumes:
       - ${CONFIG_DIR}/qbittorrent:/config
-      - ${MEDIA_DIR}/downloads:/data/torrents
+      - ${MEDIA_DIR}:/media
     network_mode: service:gluetun # run on the vpn network
     depends_on:
       - gluetun
@@ -149,9 +148,9 @@ services:
         - PGID
         - TZ
       volumes:
+        - /etc/localtime:/etc/localtime:ro
         - ${CONFIG_DIR}/radarr:/config
-        - ${MEDIA_DIR}/downloads:/data/torrents
-        - ${MEDIA_DIR}/movies:/data/movies
+        - ${MEDIA_DIR}:/media
       network_mode: service:gluetun # run on the vpn network
       depends_on:
         - gluetun
@@ -166,9 +165,9 @@ services:
         - PGID
         - TZ
       volumes:
+        - /etc/localtime:/etc/localtime:ro
         - ${CONFIG_DIR}/sonarr:/config
-        - ${MEDIA_DIR}/downloads:/data/torrents
-        - ${MEDIA_DIR}/tv:/data/tv
+        - ${MEDIA_DIR}:/media
       network_mode: service:gluetun # run on the vpn network
       depends_on:
         - gluetun
@@ -184,23 +183,56 @@ services:
       - PGID
       - TZ
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ${CONFIG_DIR}/overseerr:/config
     network_mode: service:gluetun # run on the vpn network
     depends_on:
       - gluetun
     restart: unless-stopped
 
+  # Bazarr is a companion application to Sonarr and Radarr.
+  # It manages and downloads subtitles based on your requirements.
+  bazarr:
+    image: linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID
+      - PGID
+      - TZ
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${CONFIG_DIR}/bazarr:/config
+      - ${MEDIA_DIR}:/data
+    network_mode: synobridge
+    ports:
+      - 6767:6767/tcp
+    restart: unless-stopped
+
   # A highly customizable homepage (or startpage / application dashboard)
   # with Docker and service API integrations. (optional)
-  # homepage:
-  #   image: ghcr.io/benphelps/homepage:latest
-  #   container_name: homepage
-  #   ports:
-  #     - 3000:3000
-  #   volumes:
-  #     - ${CONFIG_DIR}/homepage:/app/config
-  #     - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
-  #   # user: ${PUID}:${PGID}
-  #   networks:
-  #     - synobridge
-  #   restart: unless-stopped
+  homepage:
+    image: ghcr.io/benphelps/homepage:latest
+    container_name: homepage
+    ports:
+      - 3000:3000
+    volumes:
+      - ${CONFIG_DIR}/homepage:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+    networks:
+      - synobridge
+    restart: unless-stopped
+
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:latest
+    ports:
+      - 13378:80
+    volumes:
+      - ${MEDIA_DIR}/audiobooks:/audiobooks
+      - ${MEDIA_DIR}/podcasts:/podcasts
+      - ${CONFIG_DIR}/audiobookshelf:/config
+      - ${CONFIG_DIR}/audiobookshelf-metadata:/metadata
+    environment:
+      - TZ
+    networks:
+      - synobridge
+    restart: unless-stopped
